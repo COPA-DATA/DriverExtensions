@@ -1,0 +1,25 @@
+﻿<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup Label="Globals">
+    <SccProjectName>SAK</SccProjectName>
+    <SccProvider>SAK</SccProvider>
+    <SccAuxPath>SAK</SccAuxPath>
+    <SccLocalPath>SAK</SccLocalPath>
+  </PropertyGroup>
+
+  <PropertyGroup>
+    <TargetFramework>netstandard2.0</TargetFramework>
+    <CopyLocalLockFileAssemblies>true</CopyLocalLockFileAssemblies>
+  </PropertyGroup>
+
+  <Target Name="PostBuild" AfterTargets="PostBuildEvent">
+    <Exec Command="if not exist &quot;$(registry:HKEY_LOCAL_MACHINE\SOFTWARE\COPA-DATA\DataDir@ProgramDir32_8200)DriverExtensions\BasicSample&quot; mkdir &quot;$(registry:HKEY_LOCAL_MACHINE\SOFTWARE\COPA-DATA\DataDir@ProgramDir32_8200)DriverExtensions\BasicSample&quot;&#xD;&#xA;copy /y &quot;$(TargetDir)\*.*&quot; &quot;$(registry:HKEY_LOCAL_MACHINE\SOFTWARE\COPA-DATA\DataDir@ProgramDir32_8200)DriverExtensions\BasicSample&quot;" />
+  </Target>
+
+  <ItemGroup>
+    <Reference Include="CopaData.Drivers.Contracts">
+      <HintPath>$(registry:HKEY_LOCAL_MACHINE\SOFTWARE\COPA-DATA\DataDir@ProgramDir32_8200)DriverFramework\CopaData.Drivers.Contracts.dll</HintPath>
+    </Reference>
+  </ItemGroup>
+
+</Project>

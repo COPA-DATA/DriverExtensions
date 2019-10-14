@@ -1,0 +1,4 @@
+{
+  "MqttServerAddress": "localhost",
+  "ClientId": "zenonDriverSample"
+}
