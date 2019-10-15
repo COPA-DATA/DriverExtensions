@@ -55,11 +55,11 @@ namespace CopaData.Drivers.Samples.Basic
         {
           if (variable.Value is string stringValue)
           {
-            _valueCallback.SetValue(variable.Key, stringValue, DateTime.Now, new StatusBits());
+            _valueCallback.SetValue(variable.Key, stringValue);
           }
           else if (variable.Value is double value)
           {
-            _valueCallback.SetValue(variable.Key, value, DateTime.Now, new StatusBits());
+            _valueCallback.SetValue(variable.Key, value);
           }
         }
       }
