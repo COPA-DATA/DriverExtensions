@@ -1,5 +1,5 @@
 # DriverExtensions
-A repository to get started with zenon .NET drivers.
+A repository to get started with zenon .NET drivers. By using .NET drivers you are able to create connectivity to third party systems. This repository contains samples how to connect to REST Web Service based or MQTT based apps. 
 
 zenon is a software system from COPA-DATA for industrial automation and the energy industry. Machines and equipment are controlled, monitored and optimized. zenon's particular strength is open and reliable communication throughout heterogeneous production facilities. Over 300 native communication protocols support the horizontal and vertical exchange of data. This allows for the continuous implementation of Industrial IoT and the Smart Factory.
 
