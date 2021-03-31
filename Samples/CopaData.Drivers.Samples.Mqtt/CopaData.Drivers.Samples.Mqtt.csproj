@@ -20,14 +20,38 @@
     <PackageReference Include="Newtonsoft.Json" Version="12.0.2" />
   </ItemGroup>
 
-  <Target Name="PostBuild" AfterTargets="PostBuildEvent">
-    <Exec Command="if not exist &quot;$(registry:HKEY_LOCAL_MACHINE\SOFTWARE\COPA-DATA\DataDir@ProgramDir32_8200)DriverExtensions\BasicSample&quot; mkdir &quot;$(registry:HKEY_LOCAL_MACHINE\SOFTWARE\COPA-DATA\DataDir@ProgramDir32_8200)DriverExtensions\BasicSample&quot;&#xD;&#xA;copy /y &quot;$(TargetDir)\*.*&quot; &quot;$(registry:HKEY_LOCAL_MACHINE\SOFTWARE\COPA-DATA\DataDir@ProgramDir32_8200)DriverExtensions\BasicSample&quot;" />
-  </Target>
+	<Choose>
+		<When Condition="Exists('$(registry:HKEY_LOCAL_MACHINE\SOFTWARE\COPA-DATA\DataDir@ProgramDir32_11000)')">
+			<ItemGroup>
+				<Reference Include="CopaData.Drivers.Contracts">
+					<HintPath>$(registry:HKEY_LOCAL_MACHINE\SOFTWARE\COPA-DATA\DataDir@ProgramDir32_11000)DriverFramework\CopaData.Drivers.Contracts.dll</HintPath>
+				</Reference>
+			</ItemGroup>
+		</When>
+	</Choose>
 
-  <ItemGroup>
-    <Reference Include="CopaData.Drivers.Contracts">
-      <HintPath>$(registry:HKEY_LOCAL_MACHINE\SOFTWARE\COPA-DATA\DataDir@ProgramDir32_8200)DriverFramework\CopaData.Drivers.Contracts.dll</HintPath>
-    </Reference>
-  </ItemGroup>
+	<Choose>
+		<When Condition="Exists('$(registry:HKEY_LOCAL_MACHINE\SOFTWARE\COPA-DATA\DataDir@ProgramDir32_10000)')">
+			<ItemGroup>
+				<Reference Include="CopaData.Drivers.Contracts">
+					<HintPath>$(registry:HKEY_LOCAL_MACHINE\SOFTWARE\COPA-DATA\DataDir@ProgramDir32_10000)DriverFramework\CopaData.Drivers.Contracts.dll</HintPath>
+				</Reference>
+			</ItemGroup>
+		</When>
+	</Choose>
+	
+	<Choose>
+		<When Condition="Exists('$(registry:HKEY_LOCAL_MACHINE\SOFTWARE\COPA-DATA\DataDir@ProgramDir32_8200)')">
+			<ItemGroup>
+				<Reference Include="CopaData.Drivers.Contracts">
+					<HintPath>$(registry:HKEY_LOCAL_MACHINE\SOFTWARE\COPA-DATA\DataDir@ProgramDir32_8200)DriverFramework\CopaData.Drivers.Contracts.dll</HintPath>
+				</Reference>
+			</ItemGroup>
+		</When>
+	</Choose>
+
+	<Target Name="PostBuild" AfterTargets="PostBuildEvent">
+		<Exec Command="set key=&quot;HKEY_LOCAL_MACHINE\SOFTWARE\COPA-DATA\DataDir&quot;&#xD;&#xA;&#xD;&#xA;FOR /F &quot;tokens=2* delims= &quot; %25%251 IN ('REG QUERY %25key%25 /v CurrentVersion') DO SET /a version=%25%252&#xD;&#xA;&#xD;&#xA;FOR /F &quot;tokens=2* delims= &quot; %25%25a IN ('REG QUERY %25key%25 /v ProgramDir32_%25version%25') DO SET path=%25%25b&#xD;&#xA;&#xD;&#xA;echo %25path%25&#xD;&#xA;&#xD;&#xA;if not exist &quot;%25path%25DriverExtensions\MqttSample&quot; (&#xD;&#xA;&#xD;&#xA;mkdir &quot;%25path%25DriverExtensions\MqttSample&quot;&#xD;&#xA;)&#xD;&#xA;copy /y &quot;$(TargetDir)*.*&quot; &quot;%25path%25DriverExtensions\MqttSample&quot;&#xD;&#xA;&#xD;&#xA;" />
+	</Target>
 
 </Project>

@@ -33,13 +33,13 @@ namespace CopaData.Drivers.Samples.Mqtt
             _valueCallback = valueCallback;
 
             var configuration = GetConfiguration(configFilePath);
-            var serverAddress = configuration["MqttServerAddress"] ?? "localhost";
+            var serverAddress = configuration["MqttServerAddress"] ?? "127.0.0.1";
             var clientId = configuration["ClientId"] ?? "myLocalClientId";
 
             // Create TCP based options using the builder.
             var options = new MqttClientOptionsBuilder()
                 .WithClientId(clientId)
-                .WithTcpServer(serverAddress)
+                .WithTcpServer(serverAddress, 1883)
                 //   .WithCredentials("bud", "%spencer%")
                 //     .WithTls()
                 .WithCleanSession()
