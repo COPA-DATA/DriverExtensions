@@ -12,7 +12,7 @@ namespace CopaData.Drivers.Samples.Basic
     private readonly Dictionary<string, object> _subscriptions;
 
     public DriverExtension()
-    {
+    { 
       _subscriptions = new Dictionary<string, object>();
     }
 
@@ -36,6 +36,8 @@ namespace CopaData.Drivers.Samples.Basic
       _logger.DeepDebug($"Subscribe '{symbolicAddress}'");
 
       _subscriptions.Add(symbolicAddress, null);
+      _subscriptions[symbolicAddress] = Convert.ToDouble(0);
+      
       return Task.FromResult(true);
     }
 
@@ -55,11 +57,11 @@ namespace CopaData.Drivers.Samples.Basic
         {
           if (variable.Value is string stringValue)
           {
-            _valueCallback.SetValue(variable.Key, stringValue);
+            _valueCallback.SetValue(variable.Key, stringValue, StatusBits.Spontaneous);
           }
           else if (variable.Value is double value)
           {
-            _valueCallback.SetValue(variable.Key, value);
+            _valueCallback.SetValue(variable.Key, value, StatusBits.Spontaneous);
           }
         }
       }
