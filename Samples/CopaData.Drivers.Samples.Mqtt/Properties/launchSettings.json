@@ -1,0 +1,9 @@
+{
+  "profiles": {
+    "CopaData.Drivers.Samples.Mqtt": {
+      "commandName": "Executable",
+      "executablePath": "C:\\Program Files (x86)\\COPA-DATA\\zenon Software Platform 12\\Engineering\\GenericNet.exe",
+      "commandLineArgs": "--ipc=TCP"
+    }
+  }
+}
