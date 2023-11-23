@@ -4,7 +4,6 @@ using System.Threading;
 using System.Threading.Tasks;
 using MQTTnet;
 using MQTTnet.Client;
-using MQTTnet.Client.Options;
 using Newtonsoft.Json;
 using NLog;
 using SensorSimulator;
@@ -37,7 +36,7 @@ namespace MqttSimulatorClient
 
             await _mqttClient.ConnectAsync(options, CancellationToken.None);
 
-            _mqttClient.UseDisconnectedHandler(async e =>
+            _mqttClient.DisconnectedAsync += async e =>
             {
                 Logger.Warn("### DISCONNECTED FROM SERVER ###");
                 await Task.Delay(TimeSpan.FromSeconds(5));
@@ -48,24 +47,25 @@ namespace MqttSimulatorClient
 
                     foreach (var sensorValue in _sensorValueSimulator.Sensors.Values)
                     {
-                        await _mqttClient.SubscribeAsync(new TopicFilterBuilder().WithTopic(sensorValue.SensorName).Build());
+                        await _mqttClient.SubscribeAsync(new MqttTopicFilterBuilder().WithTopic(sensorValue.SensorName).Build());
                     }
                 }
                 catch
                 {
                     Logger.Error("### RECONNECTING FAILED ###");
                 }
-            });
+            };
 
-            _mqttClient.UseApplicationMessageReceivedHandler(args =>
+            _mqttClient.ApplicationMessageReceivedAsync += args =>
             {
                 var topic = args.ApplicationMessage.Topic;
 
-                var payloadString = Encoding.UTF8.GetString(args.ApplicationMessage.Payload);
+                var payloadString = Encoding.UTF8.GetString(args.ApplicationMessage.PayloadSegment.Array);
                 var sensorPayload = JsonConvert.DeserializeObject<SensorPayload>(payloadString);
                 _sensorValueSimulator.Sensors[topic].Value = sensorPayload.Value;
                 _sensorValueSimulator.Sensors[topic].LastChangeDateTime = sensorPayload.LastChangeDateTime;
-            });
+                return Task.CompletedTask;
+            };
         }
 
 
@@ -82,7 +82,7 @@ namespace MqttSimulatorClient
                 var message = new MqttApplicationMessageBuilder()
                   .WithTopic(sensorValue.SensorName)
                   .WithPayload(payload)
-                  .WithExactlyOnceQoS()
+                  .WithQualityOfServiceLevel(MQTTnet.Protocol.MqttQualityOfServiceLevel.ExactlyOnce)
                   .WithRetainFlag()
                   .Build();
 
@@ -103,7 +103,7 @@ namespace MqttSimulatorClient
 
             foreach (var sensorValue in _sensorValueSimulator.Sensors.Values)
             {
-                await _mqttClient.SubscribeAsync(new TopicFilterBuilder().WithTopic(sensorValue.SensorName).Build());
+                await _mqttClient.SubscribeAsync(new MqttTopicFilterBuilder().WithTopic(sensorValue.SensorName).Build());
             }
         }
 

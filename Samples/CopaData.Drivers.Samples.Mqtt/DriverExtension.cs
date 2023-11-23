@@ -8,7 +8,6 @@ using CopaData.Drivers.Contracts;
 using Microsoft.Extensions.Configuration;
 using MQTTnet;
 using MQTTnet.Client;
-using MQTTnet.Client.Options;
 using Newtonsoft.Json;
 
 namespace CopaData.Drivers.Samples.Mqtt
@@ -33,13 +32,13 @@ namespace CopaData.Drivers.Samples.Mqtt
             _valueCallback = valueCallback;
 
             var configuration = GetConfiguration(configFilePath);
-            var serverAddress = configuration["MqttServerAddress"] ?? "127.0.0.1";
+            var serverAddress = configuration["MqttServerAddress"] ?? "localhost";
             var clientId = configuration["ClientId"] ?? "myLocalClientId";
 
             // Create TCP based options using the builder.
             var options = new MqttClientOptionsBuilder()
                 .WithClientId(clientId)
-                .WithTcpServer(serverAddress, 1883)
+                .WithTcpServer(serverAddress)
                 //   .WithCredentials("bud", "%spencer%")
                 //     .WithTls()
                 .WithCleanSession()
@@ -48,7 +47,7 @@ namespace CopaData.Drivers.Samples.Mqtt
 
             await _mqttClient.ConnectAsync(options, CancellationToken.None);
 
-            _mqttClient.UseDisconnectedHandler(async e =>
+            _mqttClient.DisconnectedAsync += async e =>
             {
                 if (!_mqttClient.IsConnected)
                 {
@@ -69,22 +68,23 @@ namespace CopaData.Drivers.Samples.Mqtt
                     foreach (var symbolicAddress in _subscriptions)
                     {
                         await _mqttClient.SubscribeAsync(
-                            new TopicFilterBuilder().WithTopic(symbolicAddress).Build());
+                            new MqttTopicFilterBuilder().WithTopic(symbolicAddress).Build());
                     }
                 }
                 catch
                 {
                     logger.Error("### RECONNECTING FAILED ###");
                 }
-            });
+            };
 
-            _mqttClient.UseApplicationMessageReceivedHandler(args =>
+            _mqttClient.ApplicationMessageReceivedAsync += args =>
             {
-                var payload = Encoding.UTF8.GetString(args.ApplicationMessage.Payload);
+                var payload = Encoding.UTF8.GetString(args.ApplicationMessage.PayloadSegment.Array);
                 var t = JsonConvert.DeserializeObject<SensorPayload>(payload);
 
                 _valueCallback.SetValue(args.ApplicationMessage.Topic, t.Value, t.LastChangeDateTime);
-            });
+                return Task.CompletedTask;
+            };
 
         }
 
@@ -112,7 +112,7 @@ namespace CopaData.Drivers.Samples.Mqtt
         {
             _subscriptions.Add(symbolicAddress);
             // Subscribe to a topic
-            await _mqttClient.SubscribeAsync(new TopicFilterBuilder().WithTopic(symbolicAddress).Build());
+            await _mqttClient.SubscribeAsync(new MqttTopicFilterBuilder().WithTopic(symbolicAddress).Build());
 
             return true;
         }
@@ -124,7 +124,7 @@ namespace CopaData.Drivers.Samples.Mqtt
             await _mqttClient.UnsubscribeAsync(symbolicAddress);
         }
 
-        public async Task<bool> WriteNumericAsync(string symbolicAddress, double value, DateTime dateTime, StatusBits status)
+        public async Task<bool> WriteNumericAsync(string symbolicAddress, double value, DateTime dateTime, StatusBits statusBits)
         {
             var sensorPayload = new SensorPayload() { Value = value, LastChangeDateTime = dateTime };
             var payloadString = JsonConvert.SerializeObject(sensorPayload);
@@ -132,7 +132,7 @@ namespace CopaData.Drivers.Samples.Mqtt
             var message = new MqttApplicationMessageBuilder()
               .WithTopic(symbolicAddress)
               .WithPayload(payloadString)
-              .WithExactlyOnceQoS()
+              .WithQualityOfServiceLevel(MQTTnet.Protocol.MqttQualityOfServiceLevel.ExactlyOnce)
               .WithRetainFlag()
               .Build();
 
@@ -149,7 +149,7 @@ namespace CopaData.Drivers.Samples.Mqtt
             return false;
         }
 
-        public Task<bool> WriteStringAsync(string symbolicAddress, string value, DateTime dateTime, StatusBits status)
+        public Task<bool> WriteStringAsync(string symbolicAddress, string value, DateTime dateTime, StatusBits statusBits)
         {
             return Task.FromResult(false);
         }
