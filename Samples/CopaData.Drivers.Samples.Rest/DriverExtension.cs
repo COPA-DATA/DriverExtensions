@@ -50,12 +50,12 @@ namespace CopaData.Drivers.Samples.Rest
         {
             foreach (var subscription in _subscriptions)
             {
-                var request = new RestRequest("sensors", Method.GET) {Timeout = 2000};
+                var request = new RestRequest("sensors", Method.Get) {Timeout = 2000};
                 request.AddQueryParameter("sensorName", subscription);
 
                 try
                 {
-                    var response = await _restClient.ExecuteTaskAsync<SensorPayload>(request);
+                    var response = await _restClient.ExecuteAsync<SensorPayload>(request);
                     if (response.IsSuccessful)
                     {
                         _valueCallback.SetValue(subscription, response.Data.Value, response.Data.LastChangeDateTime, StatusBits.Spontaneous);
@@ -75,20 +75,20 @@ namespace CopaData.Drivers.Samples.Rest
             }
         }
 
-        public Task<bool> WriteStringAsync(string symbolicAddress, string value, DateTime dateTime, StatusBits status)
+        public Task<bool> WriteStringAsync(string symbolicAddress, string value, DateTime dateTime, StatusBits statusBits)
         {
             return Task.FromResult(false);
         }
 
-        public async Task<bool> WriteNumericAsync(string symbolicAddress, double value, DateTime dateTime, StatusBits status)
+        public async Task<bool> WriteNumericAsync(string symbolicAddress, double value, DateTime dateTime, StatusBits statusBits)
         {
-            var request = new RestRequest("sensors", Method.PUT);
+            var request = new RestRequest("sensors", Method.Put);
             request.AddQueryParameter("sensorName", symbolicAddress);
             request.AddQueryParameter("value", value.ToString(CultureInfo.InvariantCulture));
 
             try
             {
-                var response = await _restClient.ExecuteTaskAsync<SensorPayload>(request);
+                var response = await _restClient.ExecuteAsync<SensorPayload>(request);
                 return response.IsSuccessful;
             }
             catch (Exception e)
