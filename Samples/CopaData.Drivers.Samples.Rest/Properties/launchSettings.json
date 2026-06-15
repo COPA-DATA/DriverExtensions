@@ -2,7 +2,7 @@
   "profiles": {
     "CopaData.Drivers.Samples.Rest": {
       "commandName": "Executable",
-      "executablePath": "C:\\Program Files (x86)\\COPA-DATA\\zenon Software Platform 12\\Engineering\\GenericNet.exe",
+      "executablePath": "C:\\Program Files (x86)\\COPA-DATA\\zenon Software Platform 16\\Engineering\\GenericNet.exe",
       "commandLineArgs": "--ipc=TCP"
     }
   }

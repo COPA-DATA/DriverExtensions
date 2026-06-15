@@ -1,9 +1,8 @@
-﻿using System;
+using System;
 using System.Text;
 using System.Threading;
 using System.Threading.Tasks;
 using MQTTnet;
-using MQTTnet.Client;
 using Newtonsoft.Json;
 using NLog;
 using SensorSimulator;
@@ -20,8 +19,7 @@ namespace MqttSimulatorClient
         {
             _sensorValueSimulator = new SensorValueSimulator();
             _sensorValueSimulator.SensorValueChanged += async (sender, value) => await SensorValueChanged(sender, value);
-            var factory = new MqttFactory();
-
+            var factory = new MqttClientFactory();
             _mqttClient = factory.CreateMqttClient();
         }
 
@@ -59,8 +57,7 @@ namespace MqttSimulatorClient
             _mqttClient.ApplicationMessageReceivedAsync += args =>
             {
                 var topic = args.ApplicationMessage.Topic;
-
-                var payloadString = Encoding.UTF8.GetString(args.ApplicationMessage.PayloadSegment.Array);
+                var payloadString = Encoding.UTF8.GetString(args.ApplicationMessage.Payload);
                 var sensorPayload = JsonConvert.DeserializeObject<SensorPayload>(payloadString);
                 _sensorValueSimulator.Sensors[topic].Value = sensorPayload.Value;
                 _sensorValueSimulator.Sensors[topic].LastChangeDateTime = sensorPayload.LastChangeDateTime;

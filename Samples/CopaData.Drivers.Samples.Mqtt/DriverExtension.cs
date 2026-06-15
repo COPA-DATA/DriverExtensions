@@ -1,4 +1,4 @@
-﻿using System;
+using System;
 using System.Collections.Generic;
 using System.IO;
 using System.Text;
@@ -7,7 +7,6 @@ using System.Threading.Tasks;
 using CopaData.Drivers.Contracts;
 using Microsoft.Extensions.Configuration;
 using MQTTnet;
-using MQTTnet.Client;
 using Newtonsoft.Json;
 
 namespace CopaData.Drivers.Samples.Mqtt
@@ -22,7 +21,7 @@ namespace CopaData.Drivers.Samples.Mqtt
         public DriverExtension()
         {
             _subscriptions = new List<string>();
-            var factory = new MqttFactory();
+            var factory = new MqttClientFactory();
             _mqttClient = factory.CreateMqttClient();
         }
 
@@ -79,7 +78,7 @@ namespace CopaData.Drivers.Samples.Mqtt
 
             _mqttClient.ApplicationMessageReceivedAsync += args =>
             {
-                var payload = Encoding.UTF8.GetString(args.ApplicationMessage.PayloadSegment.Array);
+                var payload = Encoding.UTF8.GetString(args.ApplicationMessage.Payload);
                 var t = JsonConvert.DeserializeObject<SensorPayload>(payload);
 
                 _valueCallback.SetValue(args.ApplicationMessage.Topic, t.Value, t.LastChangeDateTime);

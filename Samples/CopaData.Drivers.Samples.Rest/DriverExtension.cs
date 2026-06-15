@@ -16,7 +16,7 @@ namespace CopaData.Drivers.Samples.Rest
 
         public DriverExtension()
         {
-            _restClient = new RestClient("https://localhost:44301/");
+            _restClient = new RestClient("http://localhost:5000/");
             _subscriptions = new List<string>();
         }
 
@@ -50,7 +50,7 @@ namespace CopaData.Drivers.Samples.Rest
         {
             foreach (var subscription in _subscriptions)
             {
-                var request = new RestRequest("sensors", Method.Get) {Timeout = 2000};
+                var request = new RestRequest("sensors", Method.Get) { Timeout = TimeSpan.FromMilliseconds(2000) };
                 request.AddQueryParameter("sensorName", subscription);
 
                 try
