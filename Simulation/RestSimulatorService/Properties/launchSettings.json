@@ -2,34 +2,35 @@
   "iisSettings": {
     "windowsAuthentication": false,
     "anonymousAuthentication": true,
-    "iis": {
-      "applicationUrl": "http://localhost/RestSimulatorService",
-      "sslPort": 0
-    },
     "iisExpress": {
-      "applicationUrl": "https://localhost:44301/",
+      "applicationUrl": "http://localhost:5000/",
       "sslPort": 0
     }
   },
   "profiles": {
+    "RestSimulatorService": {
+      "commandName": "Project",
+      "launchBrowser": true,
+      "launchUrl": "sensors?sensorName=Sensor0",
+      "environmentVariables": {
+        "ASPNETCORE_ENVIRONMENT": "Development"
+      },
+      "applicationUrl": "http://localhost:5000"
+    },
     "IIS Express": {
       "commandName": "IISExpress",
       "launchBrowser": true,
+      "launchUrl": "sensors?sensorName=Sensor0",
       "environmentVariables": {
         "ASPNETCORE_ENVIRONMENT": "Development"
-      },
-      "nativeDebugging": false
-    },
-    "RestSimulatorService": {
-      "commandName": "IISExpress",
-      "launchBrowser": true,
-      "environmentVariables": {
-        "ASPNETCORE_ENVIRONMENT": "Development"
-      },
-      "applicationUrl": "https://localhost:44301"
+      }
     },
     "WSL 2": {
-      "commandName": "WSL2"
+      "commandName": "WSL2",
+      "applicationUrl": "http://localhost:5000",
+      "environmentVariables": {
+        "ASPNETCORE_ENVIRONMENT": "Development"
+      }
     }
   }
 }
