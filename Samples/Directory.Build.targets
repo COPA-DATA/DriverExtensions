@@ -1,0 +1,28 @@
+<Project>
+
+  <ItemGroup Condition="'$(ZenonInstallDir)' != ''">
+    <Reference Include="CopaData.Drivers.Contracts">
+      <HintPath>$(ZenonInstallDir)DriverFramework\CopaData.Drivers.Contracts.dll</HintPath>
+    </Reference>
+  </ItemGroup>
+
+  <!-- Not checked in design-time builds, so IDEs can still load the projects without a zenon installation. -->
+  <Target Name="CheckZenonInstallation" BeforeTargets="ResolveAssemblyReferences" Condition="'$(DesignTimeBuild)' != 'true'">
+    <Error Condition="'$(ZenonInstallDir)' == ''"
+           Text="No zenon installation found for version $(ZenonVersion) (registry value HKLM\SOFTWARE\COPA-DATA\DataDir\ProgramDir32_$(ZenonVersion)). Install zenon, or set ZenonProgramDir to the zenon program folder in Directory.Build.local.props in the repository root or with /p:ZenonProgramDir=..." />
+  </Target>
+
+  <!-- Copies the driver extension into <zenon>\DriverExtensions\<ZenonDeployFolder>. Writing to Program Files
+       requires administrative rights; a failed copy is reported as a warning and does not fail the build. -->
+  <Target Name="DeployToZenon" AfterTargets="PostBuildEvent"
+          Condition="'$(DeployToZenon)' == 'true' and '$(ZenonDeployFolder)' != '' and '$(ZenonInstallDir)' != ''">
+    <ItemGroup>
+      <_ZenonDeployFiles Include="$(TargetDir)*.*" />
+    </ItemGroup>
+    <Copy SourceFiles="@(_ZenonDeployFiles)"
+          DestinationFolder="$(ZenonInstallDir)DriverExtensions\$(ZenonDeployFolder)"
+          SkipUnchangedFiles="true"
+          ContinueOnError="WarnAndContinue" />
+  </Target>
+
+</Project>
