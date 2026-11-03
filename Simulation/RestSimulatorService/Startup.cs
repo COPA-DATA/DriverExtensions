@@ -1,5 +1,3 @@
-using System;
-using System.Threading;
 using Microsoft.AspNetCore.Builder;
 using Microsoft.AspNetCore.Hosting;
 using Microsoft.Extensions.Configuration;
@@ -23,20 +21,18 @@ namespace RestSimulatorService
         {
             services.AddControllers();
 
-
             services.AddSingleton<ISensorValueSimulator, SensorValueSimulator>();
-
+            services.AddHostedService<SimulationService>();
         }
 
         // This method gets called by the runtime. Use this method to configure the HTTP request pipeline.
-        public void Configure(IApplicationBuilder app, IWebHostEnvironment env, ISensorValueSimulator sensorValueSimulator)
+        // The simulator is served over plain HTTP only (see launchSettings.json), so there is no HTTPS redirection.
+        public void Configure(IApplicationBuilder app, IWebHostEnvironment env)
         {
             if (env.IsDevelopment())
             {
                 app.UseDeveloperExceptionPage();
             }
-
-            app.UseHttpsRedirection();
 
             app.UseRouting();
 
@@ -46,12 +42,6 @@ namespace RestSimulatorService
             {
                 endpoints.MapControllers();
             });
-
-
-            var simulationCount = Convert.ToInt32(Configuration["SimulationCount"]);
-
-            sensorValueSimulator.StartSimulation(simulationCount, CancellationToken.None);
-
         }
     }
 }

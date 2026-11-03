@@ -27,7 +27,7 @@ namespace RestSimulatorService.Controllers
                 return BadRequest();
             }
 
-            if (_sensorValueSimulator.Sensors.TryGetValue(sensorName, out SensorValue sensorValue))
+            if (_sensorValueSimulator.Sensors.TryGetValue(sensorName, out var sensorValue))
             {
                 return Ok(sensorValue);
             }
@@ -44,7 +44,7 @@ namespace RestSimulatorService.Controllers
                 return BadRequest();
             }
 
-            if (_sensorValueSimulator.Sensors.TryGetValue(sensorName, out SensorValue sensorValue))
+            if (_sensorValueSimulator.Sensors.TryGetValue(sensorName, out var sensorValue))
             {
                 sensorValue.Value = value;
                 sensorValue.LastChangeDateTime = DateTime.UtcNow;

@@ -1,0 +1,11 @@
+<Project>
+
+  <!-- Machine-specific settings (e.g. ZenonProgramDir), not committed. -->
+  <Import Project="$(MSBuildThisFileDirectory)Directory.Build.local.props"
+          Condition="Exists('$(MSBuildThisFileDirectory)Directory.Build.local.props')" />
+
+  <PropertyGroup>
+    <Nullable>enable</Nullable>
+  </PropertyGroup>
+
+</Project>

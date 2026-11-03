@@ -1,0 +1,21 @@
+<Project>
+
+  <Import Project="$([MSBuild]::GetPathOfFileAbove('Directory.Build.props', '$(MSBuildThisFileDirectory)../'))" />
+
+  <PropertyGroup>
+    <TargetFramework>net10.0</TargetFramework>
+    <CopyLocalLockFileAssemblies>true</CopyLocalLockFileAssemblies>
+
+    <!-- zenon version the samples are compiled against and deployed to (16000 = zenon 16). -->
+    <ZenonVersion Condition="'$(ZenonVersion)' == ''">16000</ZenonVersion>
+
+    <!-- zenon installation folder; can be overridden with /p:ZenonProgramDir=... -->
+    <ZenonProgramDir Condition="'$(ZenonProgramDir)' == ''">$([MSBuild]::GetRegistryValueFromView('HKEY_LOCAL_MACHINE\SOFTWARE\COPA-DATA\DataDir', 'ProgramDir32_$(ZenonVersion)', null, RegistryView.Registry64, RegistryView.Registry32))</ZenonProgramDir>
+    <!-- Separate property, because a ZenonProgramDir passed on the command line cannot be modified. -->
+    <ZenonInstallDir Condition="'$(ZenonProgramDir)' != ''">$([MSBuild]::EnsureTrailingSlash('$(ZenonProgramDir)'))</ZenonInstallDir>
+
+    <!-- Set to false to skip copying the build output into the zenon DriverExtensions folder. -->
+    <DeployToZenon Condition="'$(DeployToZenon)' == ''">true</DeployToZenon>
+  </PropertyGroup>
+
+</Project>

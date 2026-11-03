@@ -1,6 +1,6 @@
 using System;
 using System.Collections.Generic;
-using System.IO;
+using System.Linq;
 using System.Text;
 using System.Threading;
 using System.Threading.Tasks;
@@ -13,14 +13,20 @@ namespace CopaData.Drivers.Samples.Mqtt
 {
     public class DriverExtension : IDriverExtension
     {
-        private ILogger _logger;
-        private IValueCallback _valueCallback;
+        private static readonly TimeSpan ReconnectInterval = TimeSpan.FromSeconds(5);
+
+        private ILogger _logger = null!;
+        private IValueCallback _valueCallback = null!;
         private readonly IMqttClient _mqttClient;
-        private readonly List<string> _subscriptions;
+        private readonly HashSet<string> _subscriptions;
+        private readonly object _subscriptionsLock = new object();
+        private readonly CancellationTokenSource _shutdown = new CancellationTokenSource();
+        private MqttClientOptions _options = null!;
+        private Task _connectionMonitor = Task.CompletedTask;
 
         public DriverExtension()
         {
-            _subscriptions = new List<string>();
+            _subscriptions = new HashSet<string>();
             var factory = new MqttClientFactory();
             _mqttClient = factory.CreateMqttClient();
         }
@@ -35,7 +41,7 @@ namespace CopaData.Drivers.Samples.Mqtt
             var clientId = configuration["ClientId"] ?? "myLocalClientId";
 
             // Create TCP based options using the builder.
-            var options = new MqttClientOptionsBuilder()
+            _options = new MqttClientOptionsBuilder()
                 .WithClientId(clientId)
                 .WithTcpServer(serverAddress)
                 //   .WithCredentials("bud", "%spencer%")
@@ -43,58 +49,120 @@ namespace CopaData.Drivers.Samples.Mqtt
                 .WithCleanSession()
                 .Build();
 
+            // Register the handlers before connecting, so no event of the first connection is missed.
+            _mqttClient.DisconnectedAsync += OnDisconnectedAsync;
+            _mqttClient.ApplicationMessageReceivedAsync += OnApplicationMessageReceivedAsync;
 
-            await _mqttClient.ConnectAsync(options, CancellationToken.None);
+            await TryConnectAsync(_shutdown.Token);
 
-            _mqttClient.DisconnectedAsync += async e =>
-            {
-                if (!_mqttClient.IsConnected)
-                {
-                    foreach (var subscription in _subscriptions)
-                    {
-                        _valueCallback.SetValue(subscription, StatusBits.Invalid);
-                    }
-                }
-
-                logger.Warn("### DISCONNECTED FROM SERVER ###");
-
-                await Task.Delay(TimeSpan.FromSeconds(5));
-
-                try
-                {
-                    await _mqttClient.ReconnectAsync();
-
-                    foreach (var symbolicAddress in _subscriptions)
-                    {
-                        await _mqttClient.SubscribeAsync(
-                            new MqttTopicFilterBuilder().WithTopic(symbolicAddress).Build());
-                    }
-                }
-                catch
-                {
-                    logger.Error("### RECONNECTING FAILED ###");
-                }
-            };
-
-            _mqttClient.ApplicationMessageReceivedAsync += args =>
-            {
-                var payload = Encoding.UTF8.GetString(args.ApplicationMessage.Payload);
-                var t = JsonConvert.DeserializeObject<SensorPayload>(payload);
-
-                _valueCallback.SetValue(args.ApplicationMessage.Topic, t.Value, t.LastChangeDateTime);
-                return Task.CompletedTask;
-            };
-
+            // Reconnects whenever the connection is lost, including when the server was not reachable at startup.
+            _connectionMonitor = Task.Run(() => MonitorConnectionAsync(_shutdown.Token));
         }
 
         private IConfigurationRoot GetConfiguration(string configFilePath)
         {
-            _logger.Warn($"Using configuration file at '{configFilePath}'");
+            _logger.DeepDebug($"Using configuration file at '{configFilePath}'");
             var configurationBuilder = new ConfigurationBuilder()
                 .AddJsonFile(configFilePath, optional: true);
 
             var configuration = configurationBuilder.Build();
             return configuration;
+        }
+
+        private async Task MonitorConnectionAsync(CancellationToken cancellationToken)
+        {
+            while (!cancellationToken.IsCancellationRequested)
+            {
+                try
+                {
+                    await Task.Delay(ReconnectInterval, cancellationToken);
+                }
+                catch (OperationCanceledException)
+                {
+                    return;
+                }
+
+                if (!_mqttClient.IsConnected)
+                {
+                    await TryConnectAsync(cancellationToken);
+                }
+            }
+        }
+
+        private async Task TryConnectAsync(CancellationToken cancellationToken)
+        {
+            try
+            {
+                await _mqttClient.ConnectAsync(_options, cancellationToken);
+
+                // The session is clean, so the server does not remember subscriptions of an earlier connection.
+                foreach (var symbolicAddress in GetSubscriptions())
+                {
+                    await _mqttClient.SubscribeAsync(
+                        new MqttTopicFilterBuilder().WithTopic(symbolicAddress).Build(), cancellationToken);
+                }
+
+                _logger.DeepDebug("Connected to MQTT server");
+            }
+            catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested)
+            {
+            }
+            catch (Exception e)
+            {
+                _logger.Error($"Connecting to MQTT server failed: {e.Message}");
+            }
+        }
+
+        private Task OnDisconnectedAsync(MqttClientDisconnectedEventArgs e)
+        {
+            // Also raised for failed connection attempts and for the disconnect during shutdown.
+            if (!e.ClientWasConnected || _shutdown.IsCancellationRequested)
+            {
+                return Task.CompletedTask;
+            }
+
+            _logger.Warn("### DISCONNECTED FROM SERVER ###");
+
+            foreach (var symbolicAddress in GetSubscriptions())
+            {
+                _valueCallback.SetValue(symbolicAddress, StatusBits.Invalid);
+            }
+
+            return Task.CompletedTask;
+        }
+
+        private Task OnApplicationMessageReceivedAsync(MqttApplicationMessageReceivedEventArgs args)
+        {
+            var topic = args.ApplicationMessage.Topic;
+
+            try
+            {
+                var payload = Encoding.UTF8.GetString(args.ApplicationMessage.Payload);
+                var sensorPayload = JsonConvert.DeserializeObject<SensorPayload>(payload);
+
+                if (sensorPayload != null)
+                {
+                    _valueCallback.SetValue(topic, sensorPayload.Value, sensorPayload.LastChangeDateTime);
+                    return Task.CompletedTask;
+                }
+
+                _logger.Error($"Received empty payload on topic '{topic}'");
+            }
+            catch (JsonException e)
+            {
+                _logger.Error($"Received invalid payload on topic '{topic}': {e.Message}");
+            }
+
+            _valueCallback.SetValue(topic, StatusBits.Invalid);
+            return Task.CompletedTask;
+        }
+
+        private string[] GetSubscriptions()
+        {
+            lock (_subscriptionsLock)
+            {
+                return _subscriptions.ToArray();
+            }
         }
 
         public Task ReadAllAsync()
@@ -104,23 +172,71 @@ namespace CopaData.Drivers.Samples.Mqtt
 
         public async Task ShutdownAsync()
         {
-            await _mqttClient.DisconnectAsync();
+            _shutdown.Cancel();
+            await _connectionMonitor;
+
+            if (_mqttClient.IsConnected)
+            {
+                await _mqttClient.DisconnectAsync();
+            }
+
+            _mqttClient.Dispose();
         }
 
         public async Task<bool> SubscribeAsync(string symbolicAddress)
         {
-            _subscriptions.Add(symbolicAddress);
-            // Subscribe to a topic
-            await _mqttClient.SubscribeAsync(new MqttTopicFilterBuilder().WithTopic(symbolicAddress).Build());
+            lock (_subscriptionsLock)
+            {
+                if (!_subscriptions.Add(symbolicAddress))
+                {
+                    return true;
+                }
+            }
 
-            return true;
+            // While disconnected, the topic is subscribed as soon as the connection is established.
+            if (!_mqttClient.IsConnected)
+            {
+                return true;
+            }
+
+            try
+            {
+                await _mqttClient.SubscribeAsync(new MqttTopicFilterBuilder().WithTopic(symbolicAddress).Build());
+                return true;
+            }
+            catch (Exception e)
+            {
+                _logger.Error($"Error while subscribing '{symbolicAddress}': {e.Message}");
+            }
+
+            lock (_subscriptionsLock)
+            {
+                _subscriptions.Remove(symbolicAddress);
+            }
+
+            return false;
         }
 
         public async Task UnsubscribeAsync(string symbolicAddress)
         {
-            _subscriptions.Remove(symbolicAddress);
+            lock (_subscriptionsLock)
+            {
+                _subscriptions.Remove(symbolicAddress);
+            }
 
-            await _mqttClient.UnsubscribeAsync(symbolicAddress);
+            if (!_mqttClient.IsConnected)
+            {
+                return;
+            }
+
+            try
+            {
+                await _mqttClient.UnsubscribeAsync(symbolicAddress);
+            }
+            catch (Exception e)
+            {
+                _logger.Error($"Error while unsubscribing '{symbolicAddress}': {e.Message}");
+            }
         }
 
         public async Task<bool> WriteNumericAsync(string symbolicAddress, double value, DateTime dateTime, StatusBits statusBits)
@@ -129,11 +245,11 @@ namespace CopaData.Drivers.Samples.Mqtt
             var payloadString = JsonConvert.SerializeObject(sensorPayload);
 
             var message = new MqttApplicationMessageBuilder()
-              .WithTopic(symbolicAddress)
-              .WithPayload(payloadString)
-              .WithQualityOfServiceLevel(MQTTnet.Protocol.MqttQualityOfServiceLevel.ExactlyOnce)
-              .WithRetainFlag()
-              .Build();
+                .WithTopic(symbolicAddress)
+                .WithPayload(payloadString)
+                .WithQualityOfServiceLevel(MQTTnet.Protocol.MqttQualityOfServiceLevel.ExactlyOnce)
+                .WithRetainFlag()
+                .Build();
 
             try
             {

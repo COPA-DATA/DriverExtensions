@@ -1,34 +1,12 @@
 ﻿<Project Sdk="Microsoft.NET.Sdk">
 
-  <PropertyGroup Label="Globals">
-    <SccProjectName>SAK</SccProjectName>
-    <SccProvider>SAK</SccProvider>
-    <SccAuxPath>SAK</SccAuxPath>
-    <SccLocalPath>SAK</SccLocalPath>
-  </PropertyGroup>
-
   <PropertyGroup>
-    <TargetFramework>net10.0</TargetFramework>
-    <CopyLocalLockFileAssemblies>true</CopyLocalLockFileAssemblies>
+    <ZenonDeployFolder>RestSample</ZenonDeployFolder>
   </PropertyGroup>
 
   <ItemGroup>
+    <PackageReference Include="Microsoft.Extensions.Configuration.Json" Version="10.0.8" />
     <PackageReference Include="RestSharp" Version="114.0.0" />
   </ItemGroup>
-
-	<Choose>
-		<When Condition="Exists('$(registry:HKEY_LOCAL_MACHINE\SOFTWARE\COPA-DATA\DataDir@ProgramDir32_16000)')">
-			<ItemGroup>
-				<Reference Include="CopaData.Drivers.Contracts">
-					<HintPath>$(registry:HKEY_LOCAL_MACHINE\SOFTWARE\COPA-DATA\DataDir@ProgramDir32_16000)DriverFramework\CopaData.Drivers.Contracts.dll</HintPath>
-				</Reference>
-			</ItemGroup>
-		</When>
-	</Choose>
-
-		<Target Name="PostBuild" AfterTargets="PostBuildEvent">
-		<Exec Command="set key=&quot;HKEY_LOCAL_MACHINE\SOFTWARE\COPA-DATA\DataDir&quot;&#xD;&#xA;&#xD;&#xA;FOR /F &quot;tokens=2* delims= &quot; %25%251 IN ('REG QUERY %25key%25 /v CurrentVersion') DO SET /a version=%25%252&#xD;&#xA;&#xD;&#xA;FOR /F &quot;tokens=2* delims= &quot; %25%25a IN ('REG QUERY %25key%25 /v ProgramDir32_%25version%25') DO SET path=%25%25b&#xD;&#xA;&#xD;&#xA;echo %25path%25&#xD;&#xA;&#xD;&#xA;if not exist &quot;%25path%25DriverExtensions\RestSample&quot; (&#xD;&#xA;&#xD;&#xA;mkdir &quot;%25path%25DriverExtensions\RestSample&quot;&#xD;&#xA;)&#xD;&#xA;copy /y &quot;$(TargetDir)*.*&quot; &quot;%25path%25DriverExtensions\RestSample&quot;&#xD;&#xA;&#xD;&#xA;" />
-	</Target>
-
 
 </Project>
